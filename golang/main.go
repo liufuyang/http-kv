@@ -5,9 +5,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"example.com/hello/cache"
 )
+
+const ExpireDurationStr = "10s"
 
 // Server as http server
 type Server struct {
@@ -57,7 +60,8 @@ func (s *Server) size(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	cache := cache.NewSyncmapCache()
-	server := Server{&cache}
+	expireDuration, _ := time.ParseDuration(ExpireDurationStr)
+	cache := cache.NewSyncmapCache(expireDuration)
+	server := Server{cache}
 	server.start()
 }

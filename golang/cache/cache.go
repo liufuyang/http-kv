@@ -1,12 +1,11 @@
 package cache
 
 import (
+	"fmt"
 	"time"
 
 	"golang.org/x/sync/syncmap"
 )
-
-const ExpireDurationStr = "30m"
 
 type Value struct {
 	value     string
@@ -20,11 +19,14 @@ type Cache interface {
 }
 
 type SyncmapCache struct {
-	m syncmap.Map
+	expireDuration time.Duration
+	m              syncmap.Map
 }
 
-func NewSyncmapCache() SyncmapCache {
-	return SyncmapCache{m: syncmap.Map{}}
+func NewSyncmapCache(expireDuration time.Duration) *SyncmapCache {
+	cache := SyncmapCache{m: syncmap.Map{}, expireDuration: expireDuration}
+	cache.vaccum()
+	return &cache
 }
 
 func (sc *SyncmapCache) Get(key string) string {
@@ -34,8 +36,7 @@ func (sc *SyncmapCache) Get(key string) string {
 	}
 	value := v.(Value)
 
-	expireDuration, _ := time.ParseDuration(ExpireDurationStr)
-	if time.Now().After(value.timestamp.Add(expireDuration)) {
+	if time.Now().After(value.timestamp.Add(sc.expireDuration)) {
 		sc.m.Delete(key)
 		return ""
 	}
@@ -49,9 +50,44 @@ func (sc *SyncmapCache) Set(key string, value string) {
 
 func (sc *SyncmapCache) Size() int {
 	length := 0
-	sc.m.Range(func(_, _ interface{}) bool {
+	sc.m.Range(func(key, _ interface{}) bool {
 		length++
 		return true
 	})
 	return length
+}
+
+func (sc *SyncmapCache) vaccum() {
+	go func() {
+		for {
+			ms := sc.expireDuration.Milliseconds()
+			size := sc.Size()
+			var sleepMs int64
+			if size <= 1 {
+				sleepMs = ms
+			} else {
+				sleepMs = ms / (int64)(size)
+			}
+
+			// Debug print
+			fmt.Println("size: ", size)
+			fmt.Println("sleepMs: ", sleepMs)
+
+			if size == 0 {
+				time.Sleep(time.Duration(sleepMs) * time.Millisecond)
+			} else {
+				sc.m.Range(func(key, v interface{}) bool {
+					time.Sleep(time.Duration(sleepMs) * time.Millisecond)
+
+					value := v.(Value)
+					if time.Now().After(value.timestamp.Add(sc.expireDuration)) {
+						// Debug print
+						fmt.Println("deleting key:", key)
+						sc.m.Delete(key)
+					}
+					return true
+				})
+			}
+		}
+	}()
 }
