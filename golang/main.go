@@ -6,13 +6,12 @@ import (
 	"net/http"
 	"strings"
 
-	"golang.org/x/sync/syncmap"
+	"example.com/hello/cache"
 )
 
 // Server as http server
 type Server struct {
-	// m  map[string]string
-	m syncmap.Map
+	cache cache.Cache
 }
 
 func (s *Server) start() {
@@ -35,16 +34,15 @@ func (s *Server) handler(w http.ResponseWriter, req *http.Request) {
 	key := paths[1]
 	switch req.Method {
 	case "GET":
-		v, _ := s.m.Load(key)
-		vStr, _ := v.(string)
-		fmt.Fprintf(w, vStr)
+		v := s.cache.Get(key)
+		fmt.Fprintf(w, v)
 	case "POST":
 		body, err := ioutil.ReadAll(req.Body)
 		if err != nil {
 			http.Error(w, "Cannot read request body", http.StatusBadRequest)
 		}
 		value := string(body)
-		s.m.Store(key, value)
+		s.cache.Set(key, value)
 		fmt.Fprintf(w, value)
 		// fmt.Println(value)
 	default:
@@ -53,6 +51,7 @@ func (s *Server) handler(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	server := Server{m: syncmap.Map{}}
+	cache := cache.NewSyncmapCache()
+	server := Server{&cache}
 	server.start()
 }
