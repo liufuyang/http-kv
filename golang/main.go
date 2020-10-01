@@ -17,6 +17,7 @@ type Server struct {
 func (s *Server) start() {
 	fmt.Println("Starting server on 8081 ...")
 
+	http.HandleFunc("/size", s.size)
 	http.HandleFunc("/", s.handler)
 	http.ListenAndServe(":8081", nil)
 
@@ -48,6 +49,11 @@ func (s *Server) handler(w http.ResponseWriter, req *http.Request) {
 	default:
 		http.Error(w, "Only GET and POST methods are supported.", http.StatusMethodNotAllowed)
 	}
+}
+
+func (s *Server) size(w http.ResponseWriter, req *http.Request) {
+	size := s.cache.Size()
+	fmt.Fprintf(w, "%d", size)
 }
 
 func main() {
