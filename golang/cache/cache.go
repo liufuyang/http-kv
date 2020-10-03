@@ -7,28 +7,33 @@ import (
 	"golang.org/x/sync/syncmap"
 )
 
+// Value type for the kv cache
 type Value struct {
 	value     string
 	timestamp time.Time
 }
 
+// Cache is an interface to allow easily switch to a different impl later on
 type Cache interface {
 	Get(key string) string
 	Set(key string, value string)
 	Size() int
 }
 
+// SyncmapCache is a simple Cache impl with syncmap.Map
 type SyncmapCache struct {
 	expireDuration time.Duration
 	m              syncmap.Map
 }
 
+// NewSyncmapCache is for creating a new SyncmapCache
 func NewSyncmapCache(expireDuration time.Duration) *SyncmapCache {
 	cache := SyncmapCache{m: syncmap.Map{}, expireDuration: expireDuration}
 	cache.vaccum()
 	return &cache
 }
 
+// Get is for impl of Cache for SyncmapCache - get value
 func (sc *SyncmapCache) Get(key string) string {
 	v, ok := sc.m.Load(key)
 	if !ok {
@@ -43,11 +48,13 @@ func (sc *SyncmapCache) Get(key string) string {
 	return value.value
 }
 
+// Set is for impl of Cache for SyncmapCache - set value
 func (sc *SyncmapCache) Set(key string, value string) {
 	v := Value{value: value, timestamp: time.Now()}
 	sc.m.Store(key, v)
 }
 
+// Size to return the current element size in Cache
 func (sc *SyncmapCache) Size() int {
 	length := 0
 	sc.m.Range(func(key, _ interface{}) bool {
@@ -57,27 +64,31 @@ func (sc *SyncmapCache) Size() int {
 	return length
 }
 
+// vaccum method is used for SyncmapCache clean up expired key
 func (sc *SyncmapCache) vaccum() {
+	expireDurationMs := sc.expireDuration.Milliseconds()
+	fmt.Println("cache expire time: ", expireDurationMs, "ms")
 	go func() {
 		for {
-			ms := sc.expireDuration.Milliseconds()
 			size := sc.Size()
 			var sleepMs int64
 			if size <= 1 {
-				sleepMs = ms
+				sleepMs = expireDurationMs
 			} else {
-				sleepMs = ms / (int64)(size)
+				sleepMs = expireDurationMs / (int64)(size)
 			}
-
 			// Debug print
-			fmt.Println("size: ", size)
-			fmt.Println("sleepMs: ", sleepMs)
+			fmt.Println("cache size: ", size)
 
 			if size == 0 {
+				// Debug print
+				fmt.Println("vaccum sleep: ", sleepMs, "ms")
 				time.Sleep(time.Duration(sleepMs) * time.Millisecond)
 			} else {
 				sc.m.Range(func(key, v interface{}) bool {
-					time.Sleep(time.Duration(sleepMs) * time.Millisecond)
+					// Debug print
+					fmt.Println("vaccum sleep: ", sleepMs, "ms")
+					time.Sleep(time.Duration(sleepMs) * time.Millisecond) // sleep here for some time to reduce loop frequency
 
 					value := v.(Value)
 					if time.Now().After(value.timestamp.Add(sc.expireDuration)) {
