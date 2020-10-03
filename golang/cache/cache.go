@@ -3,8 +3,18 @@ package cache
 import (
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/syncmap"
+)
+
+var (
+	cacheSizeGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "cache_size",
+
+		Help: "The number of HTTP requests GET on / served in the last second",
+	})
 )
 
 // Value type for the kv cache
@@ -78,6 +88,7 @@ func (sc *SyncmapCache) vaccum() {
 				sleepMs = expireDurationMs / (int64)(size)
 			}
 			log.Debug("cache size: ", size)
+			cacheSizeGauge.Set(float64(size))
 
 			if size == 0 {
 				log.Debug("vaccum sleep: ", sleepMs, "ms")
