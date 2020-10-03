@@ -1,9 +1,9 @@
 package cache
 
 import (
-	"fmt"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/syncmap"
 )
 
@@ -67,7 +67,7 @@ func (sc *SyncmapCache) Size() int {
 // vaccum method is used for SyncmapCache clean up expired key
 func (sc *SyncmapCache) vaccum() {
 	expireDurationMs := sc.expireDuration.Milliseconds()
-	fmt.Println("cache expire time: ", expireDurationMs, "ms")
+	log.Info("cache expire time: ", expireDurationMs, "ms")
 	go func() {
 		for {
 			size := sc.Size()
@@ -77,23 +77,19 @@ func (sc *SyncmapCache) vaccum() {
 			} else {
 				sleepMs = expireDurationMs / (int64)(size)
 			}
-			// Debug print
-			fmt.Println("cache size: ", size)
+			log.Debug("cache size: ", size)
 
 			if size == 0 {
-				// Debug print
-				fmt.Println("vaccum sleep: ", sleepMs, "ms")
+				log.Debug("vaccum sleep: ", sleepMs, "ms")
 				time.Sleep(time.Duration(sleepMs) * time.Millisecond)
 			} else {
 				sc.m.Range(func(key, v interface{}) bool {
-					// Debug print
-					fmt.Println("vaccum sleep: ", sleepMs, "ms")
+					log.Debug("vaccum sleep: ", sleepMs, "ms")
 					time.Sleep(time.Duration(sleepMs) * time.Millisecond) // sleep here for some time to reduce loop frequency
 
 					value := v.(Value)
 					if time.Now().After(value.timestamp.Add(sc.expireDuration)) {
-						// Debug print
-						fmt.Println("deleting key:", key)
+						log.Debug("deleting key:", key)
 						sc.m.Delete(key)
 					}
 					return true

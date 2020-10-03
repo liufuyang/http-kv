@@ -7,10 +7,17 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"example.com/hello/cache"
 )
 
 const ExpireDurationStr = "10s"
+
+func init() {
+	log.SetLevel(log.InfoLevel)
+	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
+}
 
 // Server as http server
 type Server struct {
@@ -18,13 +25,13 @@ type Server struct {
 }
 
 func (s *Server) start() {
-	fmt.Println("Starting server on 8081 ...")
+	log.Info("Starting server on 8081 ...")
 
 	http.HandleFunc("/size", s.size)
 	http.HandleFunc("/", s.handler)
 	http.ListenAndServe(":8081", nil)
 
-	fmt.Println("Done")
+	log.Info("Done")
 }
 
 func (s *Server) handler(w http.ResponseWriter, req *http.Request) {
@@ -48,7 +55,6 @@ func (s *Server) handler(w http.ResponseWriter, req *http.Request) {
 		value := string(body)
 		s.cache.Set(key, value)
 		fmt.Fprintf(w, value)
-		// fmt.Println(value)
 	default:
 		http.Error(w, "Only GET and POST methods are supported.", http.StatusMethodNotAllowed)
 	}
