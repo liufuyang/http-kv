@@ -12,7 +12,7 @@ import (
 	"example.com/hello/cache"
 )
 
-const ExpireDurationStr = "10s"
+const ExpireDurationStr = "10m"
 
 func init() {
 	log.SetLevel(log.InfoLevel)
