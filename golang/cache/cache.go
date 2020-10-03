@@ -78,14 +78,16 @@ func (sc *SyncmapCache) Size() int {
 func (sc *SyncmapCache) vaccum() {
 	expireDurationMs := sc.expireDuration.Milliseconds()
 	log.Info("cache expire time: ", expireDurationMs, "ms")
+	var vaccumCycleDurationMs int64
+	vaccumCycleDurationMs = 10000
 	go func() {
 		for {
 			size := sc.Size()
 			var sleepMs int64
 			if size <= 1 {
-				sleepMs = expireDurationMs
+				sleepMs = vaccumCycleDurationMs
 			} else {
-				sleepMs = expireDurationMs / (int64)(size)
+				sleepMs = vaccumCycleDurationMs / (int64)(size)
 			}
 			log.Debug("cache size: ", size)
 			cacheSizeGauge.Set(float64(size))
@@ -108,4 +110,11 @@ func (sc *SyncmapCache) vaccum() {
 			}
 		}
 	}()
+}
+
+func min(x, y int64) int64 {
+	if x < y {
+		return x
+	}
+	return y
 }

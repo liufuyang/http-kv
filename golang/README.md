@@ -20,7 +20,7 @@ Run unit tests
 go test ./...
 ```
 
-Use this https://github.com/liufuyang/autocannon-go for some simple performance test
+Use this https://github.com/liufuyang/autocannon-go for some simple performance test, getting some metrics from client size
 
 ```
 # at root directory of autocannon-go
