@@ -46,7 +46,7 @@ func TestCounter(t *testing.T) {
 	c.inc()
 
 	time.Sleep(time.Duration(100) * time.Millisecond)
-	if c.count != 2 {
-		t.Errorf("counter count is not 2 but '%v'", c.count)
+	if c.countSafe() != 2 {
+		t.Errorf("counter count is not 2 but '%v'", c.countSafe())
 	}
 }
