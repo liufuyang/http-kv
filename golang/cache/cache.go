@@ -91,11 +91,11 @@ func (sc *SyncmapCache) SizeOld() int {
 }
 
 // vaccum method is used for SyncmapCache clean up expired key
-// We set up a minimum sleep time as 10ms durring the key loop to improve overall cache performace during high load
+// We set up a minimum sleep time as 2ms durring the key loop to improve overall cache performace during high load
 func (sc *SyncmapCache) vaccum() {
 	log.Info("cache expire time: ", sc.expireDuration)
 	vaccumCycleDurationMs := int64(60000)
-	minimumSleepMs := int64(10)
+	minimumSleepMs := int64(2)
 	go func() {
 		for {
 			size := sc.Size()
