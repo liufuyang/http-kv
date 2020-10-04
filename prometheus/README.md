@@ -25,3 +25,6 @@ histogram_quantile(0.99, sum(rate(request_duration_seconds_bucket{method="get"}[
 
 histogram_quantile(0.99, sum(rate(request_duration_seconds_bucket{method="post"}[1m])) by (le))
 ```
+
+More info [here](https://godoc.org/github.com/prometheus/client_golang/prometheus/promhttp#InstrumentHandlerDuration)
+and [here](https://prometheus.io/docs/practices/histograms/)
