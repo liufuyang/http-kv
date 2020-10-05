@@ -11,8 +11,8 @@ INFO[2020-10-03T11:07:10+02:00] Starting server on 8081 ...
 ### Test server manually
 ```
 curl -X POST localhost:8081/k1 -d 'v1'
-curl -X POST localhost:8081/size
 curl -X GET localhost:8081/k1
+curl -X GET localhost:8081/size
 ```
 
 ### Run unit tests
@@ -22,7 +22,10 @@ go test ./...
 
 ### Simple Performance test
 
-Use this https://github.com/liufuyang/autocannon-go for some simple performance test, getting some metrics from client size
+Use this https://github.com/liufuyang/autocannon-go for some simple performance test, getting some metrics from client side.
+
+The script basically generate lots of ints first as keys, then do 80% GET call to fetch values and 20% POST calls to write 
+values. The values to write is a value from a previous finished GET call, otherwise 0. 
 
 ```
 # at root directory of autocannon-go
