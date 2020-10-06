@@ -40,7 +40,7 @@ type SyncmapCache struct {
 // NewSyncmapCache is for creating a new SyncmapCache
 func NewSyncmapCache(expireDuration time.Duration) *SyncmapCache {
 	cache := SyncmapCache{m: syncmap.Map{}, expireDuration: expireDuration, c: newCounter()}
-	cache.vaccum()
+	cache.vacuum()
 	return &cache
 }
 
@@ -85,12 +85,12 @@ func (sc *SyncmapCache) SizePrecise() int {
 	return length
 }
 
-// vaccum method is used for SyncmapCache clean up expired key
+// vacuum method is used for SyncmapCache clean up expired key
 // We set up a minimum sleep time as 1000ns durring the key loop to improve overall cache performace during high load
-func (sc *SyncmapCache) vaccum() {
+func (sc *SyncmapCache) vacuum() {
 	log.Info("cache expire time: ", sc.expireDuration)
-	vaccumCycleSleepMs := min(int64(10000), sc.expireDuration.Milliseconds())
-	vaccumKeyLoopSleepNs := int64(1000)
+	vacuumCycleSleepMs := min(int64(10000), sc.expireDuration.Milliseconds())
+	vacuumKeyLoopSleepNs := int64(1000)
 	go func() {
 		for {
 			sc.m.Range(func(key, v interface{}) bool {
@@ -101,22 +101,22 @@ func (sc *SyncmapCache) vaccum() {
 					sc.m.Delete(key)
 					sc.c.dec()
 					cacheSizeGauge.Dec()
-					log.Debug("vaccum key-loop sleep: ", vaccumKeyLoopSleepNs, "ns")
-					time.Sleep(time.Duration(vaccumKeyLoopSleepNs) * time.Nanosecond) // sleep here for some time to reduce loop frequency
+					log.Debug("vacuum key-loop sleep: ", vacuumKeyLoopSleepNs, "ns")
+					time.Sleep(time.Duration(vacuumKeyLoopSleepNs) * time.Nanosecond) // sleep here for some time to reduce loop frequency
 				}
 				return true
 			})
 
 			// Adjust size for counter and metric gauge
 			size := sc.SizePrecise()
-			log.Info("Vaccum cycle: Cache size from loop: ", size)
-			log.Info("Vaccum cycle: Cache size from counter: ", sc.c.countSafe())
+			log.Info("vacuum cycle: Cache size from loop: ", size)
+			log.Info("vacuum cycle: Cache size from counter: ", sc.c.countSafe())
 			log.Info("Readjust counter size to: ", size)
 			sc.c.setSafe(size)
 			cacheSizeGauge.Set(float64(size))
 
-			log.Debug("vaccum sleep: ", vaccumCycleSleepMs, "ms")
-			time.Sleep(time.Duration(vaccumCycleSleepMs) * time.Millisecond) // sleep here for some time to reduce loop frequency
+			log.Debug("vacuum sleep: ", vacuumCycleSleepMs, "ms")
+			time.Sleep(time.Duration(vacuumCycleSleepMs) * time.Millisecond) // sleep here for some time to reduce loop frequency
 		}
 	}()
 }
