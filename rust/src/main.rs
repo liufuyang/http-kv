@@ -4,42 +4,75 @@ use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use lazy_static::lazy_static;
 use dashmap::DashMap;
 use std::sync::Arc;
+use std::thread;
+use std::time::{Duration, SystemTime};
+
+const EXPIRE_DURATION: Duration = Duration::from_secs(60);
 
 lazy_static! {
-    static ref DASHMAP: Arc<DashMap<String, String>> = {
+    static ref DASHMAP: Arc<DashMap<String, Value>> = {
         let m =  DashMap::new();
-        m.insert("k1".to_string(), "foo".to_string());
-        m.insert("k2".to_string(), "bar".to_string());
-        m.insert("k3".to_string(), "baz".to_string());
-        Arc::new(m)
+        let arc = Arc::new(m);
+        let map = arc.clone();
+
+        thread::spawn(move || {
+            let vacuum_cycle_sleep = if EXPIRE_DURATION < Duration::from_secs(10) {EXPIRE_DURATION} else {Duration::from_secs(10)};
+            loop {
+                println!("Removing keys");
+                map.retain(|_, v: &mut Value| !v.expired());
+                thread::sleep(vacuum_cycle_sleep);
+            }
+        });
+
+        arc
     };
+}
+
+struct Value {
+    s: String,
+    time: SystemTime,
+}
+
+impl Value {
+    pub fn new(s: String) -> Value {
+        Value { s, time: SystemTime::now() }
+    }
+
+    pub fn to_string(&self) -> String {
+        self.s.clone()
+    }
+
+    pub fn expired(&self) -> bool {
+        SystemTime::now().duration_since(self.time)
+            .map_or(true, |d| d > EXPIRE_DURATION)
+    }
 }
 
 async fn kv_handler(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
     match req.method() {
         // Serve some instructions at /
         &Method::GET => {
-            let paths: Vec<&str> = req.uri().path().splitn(3, '/').filter(|v| !v.is_empty()).collect();
-            if paths.len() < 1 {
+            let key: &str = req.uri().path();
+            if key.len() < 2 {
                 return Ok(Response::builder().status(400).body(Body::from("Must provide a key in the path")).unwrap());
             }
-
-            let key = paths.get(0).unwrap();
-            match DASHMAP.get(*key) {
-                Some(v) => Ok(Response::new(Body::from((&*v).clone()))),
+            if key.to_lowercase().eq("/size") {
+                return Ok(Response::new(Body::from(DASHMAP.len().to_string())))
+            }
+            match DASHMAP.get(key) {
+                Some(v) => Ok(Response::new(Body::from((*v).to_string()))),
                 None => Ok(Response::default())
             }
         }
 
         &Method::POST => {
-            let paths: Vec<&str> = req.uri().path().splitn(3, '/').filter(|v| !v.is_empty()).collect();
-            if paths.len() < 1 {
+            let key: String = req.uri().path().to_string();
+            if key.len() < 2 || key.to_lowercase().eq("/size") {
                 return Ok(Response::builder().status(400).body(Body::from("Must provide a key in the path")).unwrap());
             }
 
-            let key = paths.get(0).unwrap().to_string();
             let bytes = hyper::body::to_bytes(req.into_body()).await?;
-            DASHMAP.insert(key, String::from_utf8(bytes.to_vec()).unwrap());
+            DASHMAP.insert(key, Value::new(String::from_utf8(bytes.to_vec()).unwrap()));
 
             Ok(Response::default())
         }
