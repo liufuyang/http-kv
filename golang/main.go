@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -62,28 +61,19 @@ func (s *Server) start() {
 	// label by currying.
 	handlerChain := promhttp.InstrumentHandlerInFlight(inFlightGauge,
 		promhttp.InstrumentHandlerDuration(duration.MustCurryWith(prometheus.Labels{"handler": "x"}),
-			promhttp.InstrumentHandlerCounter(counter, http.HandlerFunc(s.handler)),
+			promhttp.InstrumentHandlerCounter(counter, validationMiddleware(s.handler)),
 		),
 	)
 
-	http.HandleFunc("/size", s.size)
-	// http.Handle("/", prometheus.InstrumentHandlerFunc("webkv", s.handler))
-	http.Handle("/", handlerChain)
-	http.Handle("/metrics", promhttp.Handler())
-	http.ListenAndServe(":8081", nil)
-
-	log.Info("Done")
+	mux := http.NewServeMux()
+	mux.Handle("/", handlerChain)
+	mux.HandleFunc("/size", s.size)
+	mux.Handle("/metrics", promhttp.Handler())
+	http.ListenAndServe(":8081", mux)
 }
 
 func (s *Server) handler(w http.ResponseWriter, req *http.Request) {
-
-	paths := strings.SplitN(req.URL.Path, "/", 3)
-	if len(paths) < 2 {
-		http.Error(w, "Must provide a key in the path", http.StatusBadRequest)
-		return
-	}
-
-	key := paths[1]
+	key := req.URL.Path
 	switch req.Method {
 	case "GET":
 		v := s.cache.Get(key)
@@ -91,20 +81,37 @@ func (s *Server) handler(w http.ResponseWriter, req *http.Request) {
 	case "POST":
 		body, err := ioutil.ReadAll(req.Body)
 		if err != nil {
-			http.Error(w, "Cannot read request body", http.StatusBadRequest)
+			http.Error(w, fmt.Sprintf("Cannot read request body: %v", err), http.StatusBadRequest)
+			return
 		}
 		value := string(body)
 		s.cache.Set(key, value)
 		fmt.Fprintf(w, value)
 
 	default:
-		http.Error(w, "Only GET and POST methods are supported.", http.StatusMethodNotAllowed)
+		http.Error(w, "Only GET and POST methods are supported", http.StatusMethodNotAllowed)
 	}
 }
 
 func (s *Server) size(w http.ResponseWriter, req *http.Request) {
 	size := s.cache.Size()
 	fmt.Fprintf(w, "%d", size)
+}
+
+// Validate request url length and body length.
+func validationMiddleware(f http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if len(r.URL.Path) > 33 {
+			http.Error(w, "Key length must be less than 32 char", http.StatusBadRequest)
+			return
+		}
+		if len(r.URL.Path) < 2 {
+			http.Error(w, "Must provide a key in the path", http.StatusBadRequest)
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, 32)
+		f.ServeHTTP(w, r)
+	}
 }
 
 func main() {
