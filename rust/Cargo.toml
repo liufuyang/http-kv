@@ -11,3 +11,4 @@ hyper = "0.13"
 tokio = { version = "0.2", features = ["full"] }
 lazy_static = "1.4.0"
 dashmap = "3.11.10"
+prometheus = "0.10.0"

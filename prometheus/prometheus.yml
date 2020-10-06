@@ -19,7 +19,7 @@ scrape_configs:
       - targets: ['localhost:9090']
 
   # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
-  - job_name: 'http-kv-golang'
+  - job_name: 'http-kv'
 
     # Override the global default and scrape targets from this job every 5 seconds.
     scrape_interval: 5s
@@ -28,3 +28,6 @@ scrape_configs:
       - targets: ['host.docker.internal:8081']
         labels:
           group: 'golang'
+      - targets: ['host.docker.internal:8082']
+        labels:
+          group: 'rust'

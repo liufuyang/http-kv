@@ -12,8 +12,7 @@ import (
 var (
 	cacheSizeGauge = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "cache_size",
-
-		Help: "The number of HTTP requests GET on / served in the last second",
+		Help: "Size of the cache",
 	})
 )
 
