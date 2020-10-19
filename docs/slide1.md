@@ -2,9 +2,13 @@
 
 
 
-## This is from README.md 1.1
+## This is from `docs` folder
 
 Content 1.1
+
+This slide is defined here: https://github.com/liufuyang/http-kv/blob/master/docs/slide1.md
+
+Check it out!
 
 Note: This will only appear in the speaker notes window.
 
